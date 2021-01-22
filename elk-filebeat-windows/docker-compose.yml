@@ -1,0 +1,77 @@
+version: '2'
+services:
+  elasticsearch:
+    container_name: elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+    volumes:
+      - /elk-filebeat-windows/elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+    ports:
+      - 9200:9200
+    environment:
+      ES_JAVA_OPTS: "-Xmx256m -Xms256m"
+      #ELASTIC_PASSWORD: youpassword
+    networks:
+     - elk
+
+  logstash:
+    container_name: logstash
+    image: docker.elastic.co/logstash/logstash:7.10.2
+    volumes:
+      - /elk-filebeat-windows/logstash/pipeline/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    ports:
+      - 5044:5044
+    links:
+      - elasticsearch
+    depends_on:
+      - elasticsearch
+    networks:
+     - elk
+
+  filebeat:
+    container_name: filebeat
+    image: docker.elastic.co/beats/filebeat:7.10.2
+    command: filebeat -e -strict.perms=false
+    #volumes:
+    #  - /elk-filebeat-windows/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml
+    #  - /elk-filebeat-windows/filebeat/sample_log:/usr/share/filebeat/logs
+    volumes:
+      - /elk-filebeat-windows/filebeat/filebeat.docker.yml:/usr/share/filebeat/filebeat.yml:ro  # Configuration file
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro                                # Docker logs
+      - /var/run/docker.sock:/var/run/docker.sock:ro                                            # Additional information about containers
+      - /elk-filebeat-windows/filebeat/data:/usr/share/filebeat/data:rw                         # Persistence data
+    user: root                                                                                  # Allow access to log files and docker.sock
+    restart: on-failure
+    networks:
+      - elk
+    links:
+       - kibana
+       - logstash
+    depends_on:
+      - logstash
+
+  kibana:
+    container_name: kibana
+    image: docker.elastic.co/kibana/kibana:7.10.2
+    volumes:
+    - /elk-filebeat-windows/kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml.yml:ro
+    ports:
+      - 5601:5601
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+    links:
+      - elasticsearch
+      
+  elk-service:
+    container_name: elk-service
+    image: elk-service:1.0
+    ports:
+      - "9898:9898"
+    labels:
+      collect_logs_with_filebeat: "true"
+      decode_log_event_to_json_object: "true"
+
+networks:
+  elk:
+    driver: bridge

@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: ELK-STACK-EXAMPLE
+  zipkin:
+    enabled=false:
+server:
+  port: 9898
+logging:
+  #file: D:/Softwares/ELK/data2/elk-stack.log
+  file: /logs/elk-stack.log
