@@ -102,9 +102,6 @@ filebeat.inputs:
 
   # Period on which files under path should be checked for changes
   #reload.period: 10s
-filebeat.autodiscover:
-    providers:
-      - type:docker
 # ======================= Elasticsearch template setting =======================
 
 #setup.template.settings:

@@ -1,16 +1,15 @@
 filebeat.autodiscover:
   providers:
     - type: docker
-      hints.enabled: true
-      labels.dedot: true
       templates:
         - condition.contains:
             docker.container.name: elk-service        
           config:
             - type: container
               format: docker
-              paths:
-                - "/var/lib/docker/containers/${data.docker.container.id}/*.log"           
+              containers.ids:
+                - ${data.docker.container.id}           
 output.logstash:
   hosts: "logstash:5044"
+
 logging.metrics.enabled: false
