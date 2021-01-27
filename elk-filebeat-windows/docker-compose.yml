@@ -1,4 +1,4 @@
-version: '2'
+version: '2.2'
 services:
   elasticsearch:
     container_name: elasticsearch
@@ -8,10 +8,15 @@ services:
     ports:
       - 9200:9200
     environment:
-      ES_JAVA_OPTS: "-Xmx256m -Xms256m"
+      ES_JAVA_OPTS: "-Xmx512m -Xms512m"
       #ELASTIC_PASSWORD: youpassword
     networks:
      - elk
+    healthcheck:
+      test: ["CMD-SHELL", "curl --silent --fail elasticsearch:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 30s
+      retries: 5
 
   logstash:
     container_name: logstash
@@ -20,35 +25,37 @@ services:
       - /elk-filebeat-windows/logstash/pipeline/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
     ports:
       - 5044:5044
-    links:
-      - elasticsearch
+    environment:
+      ES_JAVA_OPTS: "-Xmx512m -Xms512m"
     depends_on:
       - elasticsearch
+    depends_on:
+      elasticsearch:
+          condition: service_healthy
     networks:
      - elk
-
+    #healthcheck:
+     # test: ["CMD-SHELL", "curl tcp://logstash:5044 || exit 1"]
+      #interval: 60s
+      #timeout: 50s
+      #retries: 5
   filebeat:
     container_name: filebeat
     image: docker.elastic.co/beats/filebeat:7.10.2
     command: filebeat -e -strict.perms=false
-    #volumes:
-    #  - /elk-filebeat-windows/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml
-    #  - /elk-filebeat-windows/filebeat/sample_log:/usr/share/filebeat/logs
     volumes:
       - /elk-filebeat-windows/filebeat/filebeat.docker.yml:/usr/share/filebeat/filebeat.yml:ro  # Configuration file
       - /var/lib/docker/containers:/var/lib/docker/containers:ro                                # Docker logs
       - /var/run/docker.sock:/var/run/docker.sock:ro                                            # Additional information about containers
-      - /elk-filebeat-windows/filebeat/data:/usr/share/filebeat/data:rw                         # Persistence data
     user: root                                                                                  # Allow access to log files and docker.sock
     restart: on-failure
     networks:
       - elk
-    links:
-       - kibana
-       - logstash
     depends_on:
       - logstash
-
+    #depends_on:
+     # logstash:
+      #    condition: service_healthy
   kibana:
     container_name: kibana
     image: docker.elastic.co/kibana/kibana:7.10.2
@@ -60,9 +67,9 @@ services:
       - elk
     depends_on:
       - elasticsearch
-    links:
-      - elasticsearch
-      
+    depends_on:
+      elasticsearch:
+          condition: service_healthy 
   elk-service:
     container_name: elk-service
     image: elk-service:1.0

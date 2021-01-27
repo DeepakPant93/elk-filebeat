@@ -7,8 +7,11 @@ filebeat.autodiscover:
           config:
             - type: container
               format: docker
-              containers.ids:
-                - ${data.docker.container.id}           
+              paths:
+                - "/var/lib/docker/containers/${data.docker.container.id}/*.log"  
+              multiline.pattern: "^[[:space:]]+(at)|^Caused by:"
+              multiline.negate: false
+              multiline.match: after
 output.logstash:
   hosts: "logstash:5044"
 
